@@ -100,7 +100,10 @@ const init_schedule = function () {
     if (now.valueOf() - last_interaction.valueOf() > 60000) {
       console.log("before clearInterval");
       clearInterval(reloadHandler);
-      if (window.checkAllEligibilityRunning !== true || window.setupPreferredPharmaciesRunning !== true) {
+      if (
+        window.checkAllEligibilityRunning !== true ||
+        window.setupPreferredPharmaciesRunning !== true
+      ) {
         window.location.reload();
       }
     }
@@ -333,21 +336,21 @@ function createSideBar() {
 
 function showDiagnosticResults(html_string) {
   if (window.diagnosticResults) {
-    window.diagnosticResults.style.display = 'block';
-    return window.diagnosticResults
+    window.diagnosticResults.style.display = "block";
+    return window.diagnosticResults;
   }
 
   var container = document.createElement("div");
-  window.diagnosticResults = container
+  window.diagnosticResults = container;
   container.classList.add("cortico-diagnostic-viewer");
-  container.innerHTML = html_string
+  container.innerHTML = html_string;
 
-  var containerClose = document.createElement("button")
+  var containerClose = document.createElement("button");
   containerClose.classList.add("cortico-diagnostic-close");
   containerClose.textContent = "Close";
   containerClose.style.cursor = "pointer";
   containerClose.addEventListener("click", function () {
-    container.style.display = 'none';
+    container.style.display = "none";
   });
   container.appendChild(containerClose);
 
@@ -361,7 +364,7 @@ function showDiagnosticResults(html_string) {
     ".cortico-diagnostic-close { position: absolute; top: 10px; right: 10px; z-index: 500; }";
   styleSheet.innerText = styles;
 
-  console.log("prepending")
+  console.log("prepending");
   document.body.prepend(container);
 }
 
@@ -383,14 +386,14 @@ function addMenu(container) {
 
 function getRecallStatusOption() {
   var container = document.createElement("div");
-  container.style.width = '100%';
+  container.style.width = "100%";
   container.style.padding = "0px 10px";
-  container.style.boxSizing = 'border-box';
+  container.style.boxSizing = "border-box";
 
   var inputContainer = document.createElement("div");
-  inputContainer.style.display = 'flex'
-  inputContainer.style.alignItems = 'center'
-  inputContainer.style.justifyContent = 'center';
+  inputContainer.style.display = "flex";
+  inputContainer.style.alignItems = "center";
+  inputContainer.style.justifyContent = "center";
 
   var input = document.createElement("input");
   input.setAttribute("id", "recall-status");
@@ -415,7 +418,7 @@ function getRecallStatusOption() {
   label.style.display = "block";
   label.style.marginTop = "30px";
   label.style.marginBottom = "10px";
-  label.style.textAlign = 'center';
+  label.style.textAlign = "center";
 
   var button = document.createElement("button");
   button.textContent = "Save";
@@ -455,19 +458,17 @@ function getEligStatus() {
 
 function getBatchPharmaciesStatus() {
   var container = document.createElement("div");
-  container.style.textAlign = 'center'
-  pubsub.subscribe('check-batch-pharmacies', (topic, data) => {
-    const progress = '(' + data.current + "/" + data.total + ')'
+  container.style.textAlign = "center";
+  pubsub.subscribe("check-batch-pharmacies", (topic, data) => {
+    const progress = "(" + data.current + "/" + data.total + ")";
 
     if (data.complete === true) {
-      container.innerHTML = 'Setup Complete!'
-
+      container.innerHTML = "Setup Complete!";
     } else {
-      const header = 'Currenty Processing' + progress + ':'
-      container.innerHTML = "<p>" + header + "<br/>" + "</p>"
+      const header = "Currenty Processing" + progress + ":";
+      container.innerHTML = "<p>" + header + "<br/>" + "</p>";
     }
-
-  })
+  });
   return container;
 }
 
@@ -601,11 +602,10 @@ function getEligButton() {
 
 function getBatchPharmaciesButton() {
   var button = document.createElement("button");
-  button.textContent = "Set preferred pharmacies"
-  button.addEventListener('click', setupPreferredPharmacies)
+  button.textContent = "Set preferred pharmacies";
+  button.addEventListener("click", setupPreferredPharmacies);
   return button;
 }
-
 
 function addNewUI() {
   var styleSheet = styleSheetFactory("newUIStyleSheet");
@@ -960,10 +960,6 @@ async function checkAllEligibility() {
   }
 }
 
-
-function setPreferredPharmacy(pharmacyObj, demographicNo) {
-
-
 function getAppointmentLink(apptTdElement) {
   var apptLink = apptTdElement.querySelector("a.apptLink");
 
@@ -992,7 +988,8 @@ function getAppointmentLink(apptTdElement) {
 
 function getDemographicNo(apptUrl) {
   var searchParams = new URLSearchParams(apptUrl);
-  var demographic_no = searchParams.get("demographic_no") || searchParams.get("demographicNo");
+  var demographic_no =
+    searchParams.get("demographic_no") || searchParams.get("demographicNo");
 
   return demographic_no;
 }
@@ -1142,228 +1139,243 @@ function plusSignFromCache() {
   }
 }
 
-
 function stringArrayToObj(stringArray) {
-    var obj = {};
-    for (var i = 0; i < stringArray.length; i++) {
-        var split = stringArray[i].split(':');
+  var obj = {};
+  for (var i = 0; i < stringArray.length; i++) {
+    var split = stringArray[i].split(":");
 
-        if (!split[0] || !split[1]) {
-            continue;
-        }
-        obj[split[0].trim()] = split[1].trim();
+    if (!split[0] || !split[1]) {
+      continue;
     }
+    obj[split[0].trim()] = split[1].trim();
+  }
 
-    return obj
+  return obj;
 }
-
 
 function getPharmacyCodeFromReasonOrNotes(textContent) {
-    var titleContents = textContent.split("\n")
-    var apptFields = stringArrayToObj(titleContents)
+  var titleContents = textContent.split("\n");
+  var apptFields = stringArrayToObj(titleContents);
 
-    // assuming that the notes is always the last field in the textContent
-    var textContentList = textContent.split("notes: ")
-    var notesValue = textContentList[textContentList.length - 1]
+  // assuming that the notes is always the last field in the textContent
+  var textContentList = textContent.split("notes: ");
+  var notesValue = textContentList[textContentList.length - 1];
 
-    var notesValuesList = notesValue.match(/\[(.*?)\]/g)
-    var pharmacyCode = notesValuesList && notesValuesList.length > 0 ? notesValuesList[0] : null;
-    console.log('notes pharmacy code', pharmacyCode)
-    // Check RFV field if not existing in notes
-    if (!pharmacyCode) {
-      var reason = apptFields["reason"]
-      var reasonValuesList = reason.match(/\[(.*?)\]/g)
+  var notesValuesList = notesValue.match(/\[(.*?)\]/g);
+  var pharmacyCode =
+    notesValuesList && notesValuesList.length > 0 ? notesValuesList[0] : null;
+  console.log("notes pharmacy code", pharmacyCode);
+  // Check RFV field if not existing in notes
+  if (!pharmacyCode) {
+    var reason = apptFields["reason"];
+    var reasonValuesList = reason.match(/\[(.*?)\]/g);
 
-      // we are assuming here that the pharmacy code is the 2nd
-      pharmacyCode = reasonValuesList && reasonValuesList.length > 0 ? reasonValuesList[1] : null;
-      console.log('rfv pharmacy code', pharmacyCode)
-    }
+    // we are assuming here that the pharmacy code is the 2nd
+    pharmacyCode =
+      reasonValuesList && reasonValuesList.length > 0
+        ? reasonValuesList[1]
+        : null;
+    console.log("rfv pharmacy code", pharmacyCode);
+  }
 
-    if (pharmacyCode) {
-      pharmacyCode = pharmacyCode.replace(/[\[\]']+/g, '')
-    }
+  if (pharmacyCode) {
+    pharmacyCode = pharmacyCode.replace(/[\[\]']+/g, "");
+  }
 
-    console.log('final pharmacy code', pharmacyCode)
-    return pharmacyCode;
+  console.log("final pharmacy code", pharmacyCode);
+  return pharmacyCode;
 }
-
 
 function setupPrescriptionButtons() {
-  const providerSchedule = document.querySelector("#providerSchedule")
-  providerSchedule.addEventListener("click", function(e) {
-    if (e.target.matches('a[title="Prescriptions"]')) {
-      var element = e.target
-      while(element.className != "apptLink") {
-          element = element.previousElementSibling
+  const providerSchedule = document.querySelector("#providerSchedule");
+  providerSchedule.addEventListener(
+    "click",
+    function (e) {
+      if (e.target.matches('a[title="Prescriptions"]')) {
+        var element = e.target;
+        while (element.className != "apptLink") {
+          element = element.previousElementSibling;
+        }
+
+        var apptTitle = element.attributes.title.textContent;
+        var pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle);
+        localStorage.setItem("currentPharmacyCode", pharmacyCode);
       }
-
-      var apptTitle = element.attributes.title.textContent
-      var pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle)
-      localStorage.setItem('currentPharmacyCode', pharmacyCode)
-    }
-  }, false)
+    },
+    false
+  );
 }
-
 
 function setupFaxButton() {
-  const prescriptionFrame = document.getElementById("AutoNumber1")
-  prescriptionFrame.addEventListener("click", async function(e) {
-    if (e.target.matches("#faxBUtton, #faxAndPasteButton")) {
-      const res = await sendPatientPrescriptionNotification()
+  const prescriptionFrame = document.getElementById("AutoNumber1");
+  prescriptionFrame.addEventListener(
+    "click",
+    async function (e) {
+      if (e.target.matches("#faxBUtton, #faxAndPasteButton")) {
+        const res = await sendPatientPrescriptionNotification();
 
-      console.log(await res.text())
-      console.log(await res.ok)
-      if (!isOk) {
-        alert(`Please login at https://${ localStorage['clinicname'] }.cortico.ca/sign_in`)
-        return
+        console.log(await res.text());
+        console.log(await res.ok);
+        if (!isOk) {
+          alert(
+            `Please login at https://${localStorage["clinicname"]}.cortico.ca/sign_in`
+          );
+          return;
+        }
+
+        const text = await res.text();
+        const json = JSON.parse(text);
       }
-
-      const text = await res.text()
-      const json = JSON.parse(text)
-    }
-  }, false)
+    },
+    false
+  );
 }
 
-
 async function setupPreferredPharmacy(code, demographic_no) {
-  var pharmacyCode = localStorage.getItem('currentPharmacyCode')
+  var pharmacyCode = localStorage.getItem("currentPharmacyCode");
 
   if (code) {
-    pharmacyCode = code
+    pharmacyCode = code;
   }
-  console.log(pharmacyCode)
-  const corticoPharmacy = await getPharmacyDetails(pharmacyCode)
+  console.log(pharmacyCode);
+  const corticoPharmacy = await getPharmacyDetails(pharmacyCode);
   const corticoPharmacyText = JSON.parse(await corticoPharmacy.text());
-  var faxNumber = corticoPharmacyText[0]['fax_number'] || null
-  var searchTerm = corticoPharmacyText[0]['name'] || null
+  var faxNumber = corticoPharmacyText[0]["fax_number"] || null;
+  var searchTerm = corticoPharmacyText[0]["name"] || null;
 
   // only use the first word on the pharmacy name to search for list
-  searchTerm = searchTerm ? searchTerm.split(" ")[0] : null
+  searchTerm = searchTerm ? searchTerm.split(" ")[0] : null;
 
   // cleanup fax number to format starting with 1
   // This might be an issue if the oscar pharmacies don't match this format
-  if (faxNumber) faxNumber = `1${faxNumber.match(/\d+/g).join('')}`
+  if (faxNumber) faxNumber = `1${faxNumber.match(/\d+/g).join("")}`;
 
-  var demographicNo = demographic_no
+  var demographicNo = demographic_no;
   if (!demographic_no) {
-    demographicNo = getDemographicFromLocation()
+    demographicNo = getDemographicFromLocation();
   }
 
-  const currPharmacyResults = await getCurrentPharmacy(demographicNo)
+  const currPharmacyResults = await getCurrentPharmacy(demographicNo);
   const currPharmacyText = JSON.parse(await currPharmacyResults.text());
   var preferredPharmacy;
-  console.log('currpharmacy', currPharmacyText)
+  console.log("currpharmacy", currPharmacyText);
   if (currPharmacyText) {
-    preferredPharmacy = currPharmacyText[0]
-    localStorage.setItem('preferredPharmacy', JSON.stringify(preferredPharmacy))
+    preferredPharmacy = currPharmacyText[0];
+    localStorage.setItem(
+      "preferredPharmacy",
+      JSON.stringify(preferredPharmacy)
+    );
   }
-  
-  const currentlyUsingPharmacy = (
-    preferredPharmacy && 
-    preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1 &&
-    preferredPharmacy.fax === faxNumber
-  )
-  console.log(`currently using pharmacy ${searchTerm.toLowerCase()}, ${currentlyUsingPharmacy}`)
 
-  storePharmaciesCache(demographicNo)
+  const currentlyUsingPharmacy =
+    preferredPharmacy &&
+    preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) >
+      -1 &&
+    preferredPharmacy.fax === faxNumber;
+  console.log(
+    `currently using pharmacy ${searchTerm.toLowerCase()}, ${currentlyUsingPharmacy}`
+  );
+
+  storePharmaciesCache(demographicNo);
 
   if (searchTerm && !currentlyUsingPharmacy) {
-      const results = await getPharmacyResults(searchTerm)
-      const text = await results.text()
-      const json = JSON.parse(text)
-      const pharmacyUpdated = json.length > 0
+    const results = await getPharmacyResults(searchTerm);
+    const text = await results.text();
+    const json = JSON.parse(text);
+    const pharmacyUpdated = json.length > 0;
 
-      const isRxPage = window.location.href.indexOf("oscarRx/choosePatient.do") > -1
+    const isRxPage =
+      window.location.href.indexOf("oscarRx/choosePatient.do") > -1;
 
-      if (pharmacyUpdated)
-      {
-          const pharmacy =(json.find((item) => {
-            return item.name.includes(searchTerm) && item.fax === faxNumber;
-          }))
-          if (pharmacy){
-            const setPharmacyResults = await setPreferredPharmacy(pharmacy, demographicNo);
-            const setPharmacyText = await setPharmacyResults.text()
+    if (pharmacyUpdated) {
+      const pharmacy = json.find((item) => {
+        return item.name.includes(searchTerm) && item.fax === faxNumber;
+      });
+      if (pharmacy) {
+        const setPharmacyResults = await setPreferredPharmacy(
+          pharmacy,
+          demographicNo
+        );
+        const setPharmacyText = await setPharmacyResults.text();
 
-            if (isRxPage) alert("Updating preferred pharmacy, press Ok to reload")
-            else console.log("Updating preferred pharmacy")
-          }
-      } else {
-          const msg = `Customer pharmacy ${searchTerm} does not exist in your Oscar pharmacy database!`
-          storePharmaciesFailureCache(demographicNo, msg)
-          if (isRxPage) alert(msg)
-          else console.log(msg)
+        if (isRxPage) alert("Updating preferred pharmacy, press Ok to reload");
+        else console.log("Updating preferred pharmacy");
       }
+    } else {
+      const msg = `Customer pharmacy ${searchTerm} does not exist in your Oscar pharmacy database!`;
+      storePharmaciesFailureCache(demographicNo, msg);
+      if (isRxPage) alert(msg);
+      else console.log(msg);
+    }
   }
 }
 
 function storePharmaciesCache(demographicNo) {
-  console.log("storing demographic in cache", demographicNo)
-  var _cache = localStorage.getItem('pharmaciesCache')
-  var cache = JSON.parse(_cache)
-  var date = dayjs().format("YYYY-MM-DD")
+  console.log("storing demographic in cache", demographicNo);
+  var _cache = localStorage.getItem("pharmaciesCache");
+  var cache = JSON.parse(_cache);
+  var date = dayjs().format("YYYY-MM-DD");
   var demographics;
 
-  if (cache && cache['date'] !== date) {
+  if (cache && cache["date"] !== date) {
     // erase the cache when new day
-    localStorage['pharmaciesCache'] = null
-    cache = null
+    localStorage["pharmaciesCache"] = null;
+    cache = null;
   }
-  if (cache && cache['demographics']) {
-    demographics = JSON.parse(cache['demographics'])
+  if (cache && cache["demographics"]) {
+    demographics = JSON.parse(cache["demographics"]);
   } else {
-    demographics = new Array()
+    demographics = new Array();
   }
-  console.log(Array.isArray(demographics))
+  console.log(Array.isArray(demographics));
   // make sure demographics is array before pushing
   if (Array.isArray(demographics)) {
-    demographics.push(demographicNo)
+    demographics.push(demographicNo);
   }
 
   cache = {
     date: date,
-    demographics: demographics
-  }
-  localStorage.setItem('pharmaciesCache', JSON.stringify(cache))
+    demographics: demographics,
+  };
+  localStorage.setItem("pharmaciesCache", JSON.stringify(cache));
 }
 
 function storePharmaciesFailureCache(demographicNo, message) {
-  var _cache = localStorage.getItem('pharmaciesCacheFailure')
-  var cache = JSON.parse(_cache)
+  var _cache = localStorage.getItem("pharmaciesCacheFailure");
+  var cache = JSON.parse(_cache);
 
-  var date = dayjs().format("YYYY-MM-DD")
-  var failures = new Array()
+  var date = dayjs().format("YYYY-MM-DD");
+  var failures = new Array();
 
-  if (cache && cache['date'] === date) {
-    localStorage['pharmaciesCacheFailure'] = null
-    cache = null
+  if (cache && cache["date"] === date) {
+    localStorage["pharmaciesCacheFailure"] = null;
+    cache = null;
   }
-  if (cache && cache['failures']) {
-    failures = cache['failures']
+  if (cache && cache["failures"]) {
+    failures = cache["failures"];
   }
 
   var data = {
     demographicNo: demographicNo,
-    message: message
-  }
-  failures.push(data)
+    message: message,
+  };
+  failures.push(data);
 
   cache = {
     date: date,
-    failures: failures
-  }
-  localStorage.setItem('pharmaciesCacheFailure', JSON.stringify(cache))
+    failures: failures,
+  };
+  localStorage.setItem("pharmaciesCacheFailure", JSON.stringify(cache));
 }
-
 
 function getDemographicFomLocation() {
-  const routeParams = new URLSearchParams(window.location.search)
+  const routeParams = new URLSearchParams(window.location.search);
 
-  return routeParams.get('demographicNo')
+  return routeParams.get("demographicNo");
 }
 
-
 async function setupPreferredPharmacies() {
-  console.log("setting up batch pharmacies")
+  console.log("setting up batch pharmacies");
   window.setupPreferredPharmaciesRunning = true;
 
   clearFailureCache();
@@ -1371,148 +1383,160 @@ async function setupPreferredPharmacies() {
   var error = false;
   try {
     for (let i = 0; i < appointments.length; i++) {
-      const element = appointments[i]
+      const element = appointments[i];
 
       if (!element || !element.attributes) {
         continue;
       }
-      console.log('here')
+      console.log("here");
 
       const apptUrl = extractApptUrl(element.attributes.onclick.textContent);
       const demographicNo = getDemographicNo(apptUrl);
-      const _pharmaciesCache = localStorage.getItem('pharmaciesCache')
-      const pharmaciesCache = JSON.parse(_pharmaciesCache)
-      var demographics = new Array()
+      const _pharmaciesCache = localStorage.getItem("pharmaciesCache");
+      const pharmaciesCache = JSON.parse(_pharmaciesCache);
+      var demographics = new Array();
 
-      if (pharmaciesCache && pharmaciesCache['demographics']) {
-        demographics = pharmaciesCache['demographics']
+      if (pharmaciesCache && pharmaciesCache["demographics"]) {
+        demographics = pharmaciesCache["demographics"];
       }
       if (demographics && demographics.includes(demographicNo)) {
-        continue
+        continue;
       }
 
-      const apptTitle = element.attributes.title.textContent
-      const pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle)
-      
+      const apptTitle = element.attributes.title.textContent;
+      const pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle);
+
       if (!pharmacyCode) {
         continue;
       }
 
-      var temp = {}
-      temp.total = appointments.length
-      temp.current = i
-      pubsub.publish('check-batch-pharmacies', temp)
-      
-      await setupPreferredPharmacy(pharmacyCode, demographicNo)
+      var temp = {};
+      temp.total = appointments.length;
+      temp.current = i;
+      pubsub.publish("check-batch-pharmacies", temp);
+
+      await setupPreferredPharmacy(pharmacyCode, demographicNo);
 
       await new Promise((resolve, reject) => {
         setTimeout(() => {
           resolve();
-        }, 2000)
-      })
+        }, 2000);
+      });
     }
-  } catch(err) {
-    alert(err)
+  } catch (err) {
+    alert(err);
   } finally {
     window.setupPreferredPharmaciesRunning = false;
-    pubsub.publish('check-batch-pharmacies', {
+    pubsub.publish("check-batch-pharmacies", {
       complete: true,
       total: length,
-      error
-    })
+      error,
+    });
   }
 }
-
 
 async function init_diagnostic_viewer_button() {
   const notesField = document.querySelector("textarea[name='notes']");
   var notesValue = notesField.textContent;
-  console.log("echo", notesValue)
+  console.log("echo", notesValue);
 
   var last_button = document.querySelector("#cortico").parentNode;
   last_button.parentNode.innerHTML +=
     "<button class='cortico-btn' id='diagnostic-viewer-btn' style='color:white; background-color:blue'>Diagnostic Viewer</button>";
 
-
-  const corticoDiagnosticViewBtn = document.getElementById("diagnostic-viewer-btn")
+  const corticoDiagnosticViewBtn = document.getElementById(
+    "diagnostic-viewer-btn"
+  );
   function update_diagnostic_button_visibility() {
     notesValue = notesField.textContent;
-    console.log("notes value", notesValue.toLowerCase())
+    console.log("notes value", notesValue.toLowerCase());
 
-    corticoDiagnosticViewBtn.style.visibility =
-    notesValue.includes("-- Cortico data below, do not change!") ? "visible" : "hidden";
+    corticoDiagnosticViewBtn.style.visibility = notesValue.includes(
+      "-- Cortico data below, do not change!"
+    )
+      ? "visible"
+      : "hidden";
   }
 
   async function open_diagnostic_viewer(e) {
     e.preventDefault();
 
     const appt_no = getQueryStringValue("appointment_no");
-    const diagnostic_response = await getDiagnosticFromCortico(appt_no, notesValue)
-    const diagnostic_text = String(await diagnostic_response.text())
-    await showDiagnosticResults(diagnostic_text)
+    const diagnostic_response = await getDiagnosticFromCortico(
+      appt_no,
+      notesValue
+    );
+    const diagnostic_text = String(await diagnostic_response.text());
+    await showDiagnosticResults(diagnostic_text);
   }
 
   update_diagnostic_button_visibility();
 
-  corticoDiagnosticViewBtn.addEventListener("click", open_diagnostic_viewer)
+  corticoDiagnosticViewBtn.addEventListener("click", open_diagnostic_viewer);
 }
-
 
 async function init_recall_button() {
   const statusOption = document.querySelector("select[name='status']");
   var statusValue = statusOption.options[statusOption.selectedIndex].text;
-  console.log("echo", statusValue)
+  console.log("echo", statusValue);
 
   var last_button = document.querySelector("#cortico").parentNode;
   last_button.parentNode.innerHTML +=
     "<button class='cortico-btn' id='recall-btn' style='color:white; background-color:blue'>Recall email</button>";
 
-  const corticoRecallButton = document.getElementById("recall-btn")
+  const corticoRecallButton = document.getElementById("recall-btn");
 
   function update_recall_button_visibility() {
     statusValue = statusOption.options[statusOption.selectedIndex].text;
-    console.log("statusValue", statusValue.toLowerCase())
+    console.log("statusValue", statusValue.toLowerCase());
 
-    var recallStatus = localStorage["recall-status"] ? localStorage["recall-status"] : "todo"
+    var recallStatus = localStorage["recall-status"]
+      ? localStorage["recall-status"]
+      : "todo";
     corticoRecallButton.style.visibility =
-    statusValue.toLowerCase() === recallStatus.toLowerCase() ? "visible" : "hidden";
+      statusValue.toLowerCase() === recallStatus.toLowerCase()
+        ? "visible"
+        : "hidden";
   }
 
   async function send_patient_recall_email(e) {
     e.preventDefault();
 
     var patientEmail = await getPatientEmail();
-    const formData = new FormData(document.querySelector("form[name=EDITAPPT]"));
+    const formData = new FormData(
+      document.querySelector("form[name=EDITAPPT]")
+    );
     const apptTime = formData.get("start_time");
     const apptDate = formData.get("appointment_date");
-    const apptPatient = formData.get("keyword")
+    const apptPatient = formData.get("keyword");
 
     if (!patientEmail) {
-      alert('Patient has no email')
-      return
+      alert("Patient has no email");
+      return;
     }
     if (!apptTime || !apptDate) {
-      alert('Please provide date/time')
-      return
+      alert("Please provide date/time");
+      return;
     }
 
-    var apptSchedule =  apptDate + "T" + apptTime
+    var apptSchedule = apptDate + "T" + apptTime;
     var cleanedSchedule = dayjs(apptSchedule).format("h:mmA on MMMM D");
-    var cleanedPatient = apptPatient ? apptPatient : 'Patient'
-    var clinicName = localStorage["clinicname"]
+    var cleanedPatient = apptPatient ? apptPatient : "Patient";
+    var clinicName = localStorage["clinicname"];
 
-    window.open(`mailto:${patientEmail}?subject=Your doctor wants to speak with you&` +
-    `body=Dear ${cleanedPatient},%0d%0aYour doctor needs to follow up with you regarding some documents or results.%0d%0a` +
-    `We have tentatively booked you an appointment at ${cleanedSchedule}.%0d%0a%0d%0aPlease confirm with the following link:` +
-    `https://${ clinicName }.cortico.ca/get-patient-appointment-lookup-url/%0d%0a%0d%0a` +
-    `Sincerely,%0d%0a${clinicName.toUpperCase()} STAFF`)
+    window.open(
+      `mailto:${patientEmail}?subject=Your doctor wants to speak with you&` +
+        `body=Dear ${cleanedPatient},%0d%0aYour doctor needs to follow up with you regarding some documents or results.%0d%0a` +
+        `We have tentatively booked you an appointment at ${cleanedSchedule}.%0d%0a%0d%0aPlease confirm with the following link:` +
+        `https://${clinicName}.cortico.ca/get-patient-appointment-lookup-url/%0d%0a%0d%0a` +
+        `Sincerely,%0d%0a${clinicName.toUpperCase()} STAFF`
+    );
   }
 
   update_recall_button_visibility();
 
   statusOption.addEventListener("change", update_recall_button_visibility);
-  corticoRecallButton.addEventListener("click", send_patient_recall_email)
-
+  corticoRecallButton.addEventListener("click", send_patient_recall_email);
 }
 
 // API calls to oscar
@@ -1536,56 +1560,57 @@ function appointmentRequest(origin, provider, data) {
 }
 
 async function getPatientEmail() {
-  const result = await getDemographicPageResponse()
-  const text = await result.text()
+  const result = await getDemographicPageResponse();
+  const text = await result.text();
 
+  var re = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+  var emails = text.match(re);
 
-  var re = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi
-  var emails = text.match(re)
-
-  if (!emails)
-      return null
+  if (!emails) return null;
   // Should return 2 from view and edit, get atleast one
-  return emails[0]
+  return emails[0];
 }
 
-    const url =
-          getOrigin() +
-          "/" +
-          getProvider() +
-          "/" +
-          "oscarRx/managePharmacy.do?method=setPreferred"
+function setPreferredPharmacy(pharmacyObj, demographicNo) {
+  const url =
+    getOrigin() +
+    "/" +
+    getProvider() +
+    "/" +
+    "oscarRx/managePharmacy.do?method=setPreferred";
 
-    pharmacyObj.name = pharmacyObj.name.replace(' ', '+')
+  pharmacyObj.name = pharmacyObj.name.replace(" ", "+");
 
-    var formData = new FormData();
-    formData.append("pharmacyId", pharmacyObj.id)
-    formData.append("demographicNo", demographicNo)
-    formData.append("pharmacyName", pharmacyObj.name)
-    formData.append("pharmacyAddress", pharmacyObj.address)
-    formData.append("pharmacyCity", pharmacyObj.city)
-    formData.append("pharmacyProvince", pharmacyObj.province)
-    formData.append("pharmacyPostalCode", pharmacyObj.postalCode)
-    formData.append("pharmacyPhone1", pharmacyObj.phone1)
-    formData.append("pharmacyPhone2", pharmacyObj.phone2)
-    formData.append("pharmacyFax", pharmacyObj.fax)
-    formData.append("pharmacyEmail", pharmacyObj.email)
-    formData.append("pharmacyServiceLocationId", pharmacyObj.serviceLocationIdentifier)
-    formData.append("pharmacyNotes", pharmacyObj.notes)
-    formData.append("preferredOrder", "1")
+  var formData = new FormData();
+  formData.append("pharmacyId", pharmacyObj.id);
+  formData.append("demographicNo", demographicNo);
+  formData.append("pharmacyName", pharmacyObj.name);
+  formData.append("pharmacyAddress", pharmacyObj.address);
+  formData.append("pharmacyCity", pharmacyObj.city);
+  formData.append("pharmacyProvince", pharmacyObj.province);
+  formData.append("pharmacyPostalCode", pharmacyObj.postalCode);
+  formData.append("pharmacyPhone1", pharmacyObj.phone1);
+  formData.append("pharmacyPhone2", pharmacyObj.phone2);
+  formData.append("pharmacyFax", pharmacyObj.fax);
+  formData.append("pharmacyEmail", pharmacyObj.email);
+  formData.append(
+    "pharmacyServiceLocationId",
+    pharmacyObj.serviceLocationIdentifier
+  );
+  formData.append("pharmacyNotes", pharmacyObj.notes);
+  formData.append("preferredOrder", "1");
 
-    const data = new URLSearchParams(formData)
+  const data = new URLSearchParams(formData);
 
-    return fetch(url, {
-        method: "POST",
-        body: data,
-        headers: {
-            Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    })
-
+  return fetch(url, {
+    method: "POST",
+    body: data,
+    headers: {
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
 }
 
 function checkEligiblity(demographicNo, origin, provider) {
@@ -1608,14 +1633,10 @@ function checkEligiblity(demographicNo, origin, provider) {
 }
 
 function getPharmacyResults(searchTerm) {
-  const uriSafeSearch = searchTerm.toLowerCase().replace(' ', '+')
-  const newLocal = "oscarRx/managePharmacy.do?method=search&search&term=" + uriSafeSearch;
-  var url =
-    getOrigin() +
-    "/" +
-    getProvider() +
-    "/" +
-    newLocal
+  const uriSafeSearch = searchTerm.toLowerCase().replace(" ", "+");
+  const newLocal =
+    "oscarRx/managePharmacy.do?method=search&search&term=" + uriSafeSearch;
+  var url = getOrigin() + "/" + getProvider() + "/" + newLocal;
 
   return fetch(url, {
     method: "GET",
@@ -1624,17 +1645,14 @@ function getPharmacyResults(searchTerm) {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "Content-Type": "application/json",
     },
-  })
+  });
 }
 
 function getCurrentPharmacy(demographicNo) {
-  const newLocal = "oscarRx/managePharmacy.do?method=getPharmacyFromDemographic&demographicNo=" + demographicNo;
-  var url =
-    getOrigin() +
-    "/" +
-    getProvider() +
-    "/" +
-    newLocal
+  const newLocal =
+    "oscarRx/managePharmacy.do?method=getPharmacyFromDemographic&demographicNo=" +
+    demographicNo;
+  var url = getOrigin() + "/" + getProvider() + "/" + newLocal;
 
   return fetch(url, {
     method: "GET",
@@ -1643,58 +1661,58 @@ function getCurrentPharmacy(demographicNo) {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "Content-Type": "application/json",
     },
-  })
+  });
 }
-
 
 function getDemographicPageResponse() {
   const origin = getOrigin();
   const provider = getProvider();
-  const demographicNo = getDemographicNo(window.location.href)
-  const url = `${origin}/${provider}/demographic/demographiccontrol.jsp?demographic_no=${demographicNo}&displaymode=edit&dboperation=search_detail`
+  const demographicNo = getDemographicNo(window.location.href);
+  const url = `${origin}/${provider}/demographic/demographiccontrol.jsp?demographic_no=${demographicNo}&displaymode=edit&dboperation=search_detail`;
 
-  return fetch(url)
+  return fetch(url);
 }
-
 
 // API calls to Cortico API
 function sendPatientPrescriptionNotification() {
-  const clinicName = localStorage['clinicname']
+  const clinicName = localStorage["clinicname"];
 
-  const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(pharmacy.name)}`
+  const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(
+    pharmacy.name
+  )}`;
 
   return fetch(url, {
     method: "GET",
     headers: {
-        Accept:
+      Accept:
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-  }).catch(error => {
-    console.log('Error: ', error)
-  })
+  }).catch((error) => {
+    console.log("Error: ", error);
+  });
 }
 
-function getPharmacyDetails(pharmacyCode){
-  const clinicName = localStorage['clinicname']
-  const url = `https://${clinicName}.cortico.ca/api/pharmacies/?code=${pharmacyCode}`
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-        "Content-Type": "application/json",
-    },
-  })
-}
-
-async function getDiagnosticFromCortico(appt_no, notes) {
-  const clinicName = localStorage['clinicname']
-  const url = `https://${clinicName}.cortico.ca/api/encrypted/diagnostic-results/?appointment_id=${appt_no}&notes=${notes}`
+function getPharmacyDetails(pharmacyCode) {
+  const clinicName = localStorage["clinicname"];
+  const url = `https://${clinicName}.cortico.ca/api/pharmacies/?code=${pharmacyCode}`;
 
   return fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
-  })
+  });
+}
+
+async function getDiagnosticFromCortico(appt_no, notes) {
+  const clinicName = localStorage["clinicname"];
+  const url = `https://${clinicName}.cortico.ca/api/encrypted/diagnostic-results/?appointment_id=${appt_no}&notes=${notes}`;
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
