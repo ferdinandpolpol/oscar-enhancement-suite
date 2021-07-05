@@ -108,6 +108,7 @@ const init_cortico = function() {
   ) {
     init_appointment_page();
     init_recall_button();
+    init_diagnostic_viewer_button();
   } else if (route.indexOf("/provider/providercontrol.jsp") > -1) {
     init_schedule();
     dragAndDrop();
@@ -302,7 +303,7 @@ const init_appointment_page = function () {
     window.open(
       "https://" +
         localStorage["clinicname"] +
-        ".cortico.ca/video-preview/" +
+        ".cortico.ca/appointment/" +
         appt_no
     );
     return false;
@@ -470,6 +471,7 @@ function createSideBar() {
   sidebar.appendChild(newUiOption);
 
   sidebar.appendChild(getCorticoUrlOption());
+  sidebar.appendChild(getRecallStatusOption());
   sidebar.appendChild(getEligStatus());
   sidebar.appendChild(getEligButton());
   sidebar.appendChild(getEligFailed());
@@ -492,6 +494,40 @@ function createSideBar() {
   return sidebar;
 }
 
+function showDiagnosticResults(html_string) {
+  if (window.diagnosticResults) {
+    window.diagnosticResults.style.display = 'block';
+    return window.diagnosticResults
+  }
+
+  var container = document.createElement("div");
+  window.diagnosticResults = container
+  container.classList.add("cortico-diagnostic-viewer");
+  container.innerHTML = html_string
+
+  var containerClose = document.createElement("button")
+  containerClose.classList.add("cortico-diagnostic-close");
+  containerClose.textContent = "Close";
+  containerClose.style.cursor = "pointer";
+  containerClose.addEventListener("click", function () {
+    container.style.display = 'none';
+  });
+  container.appendChild(containerClose);
+
+  var styleSheet = styleSheetFactory("cortico_sidebar");
+  var styles = "";
+  styles +=
+    ".cortico-diagnostic-viewer { position: fixed; top: 20%; left: 50% ;width: 300px; background-color: white; transform: translate(-50%, 0) }";
+  styles +=
+    ".cortico-diagnostic-viewer { padding: 20px; padding-top: 30px; border: 1px solid }";
+  styles +=
+    ".cortico-diagnostic-close { position: absolute; top: 10px; right: 10px; z-index: 500; }";
+  styleSheet.innerText = styles;
+
+  console.log("prepending")
+  document.body.prepend(container);
+}
+
 function addMenu(container) {
   var navigation = document.querySelector("#firstMenu #navList");
   var menu = document.createElement("li");
@@ -506,6 +542,61 @@ function addMenu(container) {
 
   document.body.prepend(sidebar);
   navigation.appendChild(menu);
+}
+
+function getRecallStatusOption() {
+  var container = document.createElement("div");
+  container.style.width = '100%';
+  container.style.padding = "0px 10px";
+  container.style.boxSizing = 'border-box';
+
+  var inputContainer = document.createElement("div");
+  inputContainer.style.display = 'flex'
+  inputContainer.style.alignItems = 'center'
+  inputContainer.style.justifyContent = 'center';
+
+  var input = document.createElement("input");
+  input.setAttribute("id", "recall-status");
+  input.setAttribute("type", "text");
+  input.setAttribute("placeholder", "Recall Status");
+  input.style.fontSize = "16px";
+  input.style.padding = "5px 5px";
+  input.style.margin = "0px 10px";
+  input.style.width = "35%";
+  input.style.backgroundColor = "transparent";
+  input.style.border = "1px solid rgb(75, 84, 246)";
+
+  inputContainer.appendChild(input);
+
+  if (localStorage.getItem("recall-status")) {
+    input.value = localStorage.getItem("recall-status");
+  }
+
+  var label = document.createElement("label");
+  label.setAttribute("for", "recall-status");
+  label.textContent = "Status to check for recall button";
+  label.style.display = "block";
+  label.style.marginTop = "30px";
+  label.style.marginBottom = "10px";
+  label.style.textAlign = 'center';
+
+  var button = document.createElement("button");
+  button.textContent = "Save";
+  button.style.width = "100%";
+  button.style.display = "inline-block";
+  button.style.margin = "10px auto";
+
+  container.appendChild(label);
+  container.appendChild(inputContainer);
+  container.appendChild(button);
+
+  button.addEventListener("click", function () {
+    if (input.value) {
+      localStorage.setItem("recall-status", input.value);
+      alert("Your recall status has changed");
+    }
+  });
+  return container;
 }
 
 function getEligStatus() {
@@ -1429,7 +1520,6 @@ function setupPrescriptionButtons() {
 
       var apptTitle = element.attributes.title.textContent
       var pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle)
-      console.log('pharmacyCode', pharmacyCode)
       localStorage.setItem('currentPharmacyCode', pharmacyCode)
     }
   }, false)
@@ -1438,8 +1528,6 @@ function setupPrescriptionButtons() {
 
 function sendPatientPrescriptionNotification() {
   const clinicName = localStorage['clinicname']
-  var pharmacy = JSON.parse(localStorage.getItem('preferredPharmacy'))
-  var demographic_no = localStorage.getItem('currentDemographicNo')
 
   const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(pharmacy.name)}`
 
@@ -1503,7 +1591,9 @@ async function setupPreferredPharmacy(code, demographic_no) {
 
   // only use the first word on the pharmacy name to search for list
   searchTerm = searchTerm ? searchTerm.split(" ")[0] : null
-  // cleanup fax number
+
+  // cleanup fax number to format starting with 1
+  // This might be an issue if the oscar pharmacies don't match this format
   if (faxNumber) faxNumber = `1${faxNumber.match(/\d+/g).join('')}`
 
   var demographicNo = demographic_no
@@ -1519,9 +1609,9 @@ async function setupPreferredPharmacy(code, demographic_no) {
     preferredPharmacy = currPharmacyText[0]
     localStorage.setItem('preferredPharmacy', JSON.stringify(preferredPharmacy))
   }
-
+  
   const currentlyUsingPharmacy = (
-    preferredPharmacy &&
+    preferredPharmacy && 
     preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1 &&
     preferredPharmacy.fax === faxNumber
   )
@@ -1617,7 +1707,20 @@ function storePharmaciesFailureCache(demographicNo, message) {
 }
 
 
-function getDemographicFromLocation() {
+async function getDiagnosticFromCortico(appt_no, notes) {
+  const clinicName = localStorage['clinicname']
+  const url = `https://${clinicName}.cortico.ca/api/encrypted/diagnostic-results/?appointment_id=${appt_no}&notes=${notes}`
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+}
+
+
+function getDemographicFomLocation() {
   const routeParams = new URLSearchParams(window.location.search)
 
   return routeParams.get('demographicNo')
@@ -1638,6 +1741,7 @@ async function setupPreferredPharmacies() {
       if (!element || !element.attributes) {
         continue;
       }
+      console.log('here')
 
       const apptUrl = extractApptUrl(element.attributes.onclick.textContent);
       const demographicNo = getDemographicNo(apptUrl);
@@ -1663,7 +1767,7 @@ async function setupPreferredPharmacies() {
       temp.total = appointments.length
       temp.current = i
       pubsub.publish('check-batch-pharmacies', temp)
-
+      
       await setupPreferredPharmacy(pharmacyCode, demographicNo)
 
       await new Promise((resolve, reject) => {
@@ -1684,6 +1788,41 @@ async function setupPreferredPharmacies() {
   }
 }
 
+
+async function init_diagnostic_viewer_button() {
+  const notesField = document.querySelector("textarea[name='notes']");
+  var notesValue = notesField.textContent;
+  console.log("echo", notesValue)
+
+  var last_button = document.querySelector("#cortico").parentNode;
+  last_button.parentNode.innerHTML +=
+    "<button class='cortico-btn' id='diagnostic-viewer-btn' style='color:white; background-color:blue'>Diagnostic Viewer</button>";
+
+
+  const corticoDiagnosticViewBtn = document.getElementById("diagnostic-viewer-btn")
+  function update_diagnostic_button_visibility() {
+    notesValue = notesField.textContent;
+    console.log("notes value", notesValue.toLowerCase())
+
+    corticoDiagnosticViewBtn.style.visibility =
+    notesValue.includes("-- Cortico data below, do not change!") ? "visible" : "hidden";
+  }
+
+  async function open_diagnostic_viewer(e) {
+    e.preventDefault();
+
+    const appt_no = getQueryStringValue("appointment_no");
+    const diagnostic_response = await getDiagnosticFromCortico(appt_no, notesValue)
+    const diagnostic_text = String(await diagnostic_response.text())
+    await showDiagnosticResults(diagnostic_text)
+  }
+
+  update_diagnostic_button_visibility();
+
+  corticoDiagnosticViewBtn.addEventListener("click", open_diagnostic_viewer)
+}
+
+
 async function init_recall_button() {
   const statusOption = document.querySelector("select[name='status']");
   var statusValue = statusOption.options[statusOption.selectedIndex].text;
@@ -1699,8 +1838,9 @@ async function init_recall_button() {
     statusValue = statusOption.options[statusOption.selectedIndex].text;
     console.log("statusValue", statusValue.toLowerCase())
 
+    var recallStatus = localStorage["recall-status"] ? localStorage["recall-status"] : "todo"
     corticoRecallButton.style.visibility =
-    statusValue.toLowerCase() === "todo" ? "visible" : "hidden";
+    statusValue.toLowerCase() === recallStatus.toLowerCase() ? "visible" : "hidden";
   }
 
   async function send_patient_recall_email(e) {
@@ -1710,6 +1850,7 @@ async function init_recall_button() {
     const formData = new FormData(document.querySelector("form[name=EDITAPPT]"));
     const apptTime = formData.get("start_time");
     const apptDate = formData.get("appointment_date");
+    const apptPatient = formData.get("keyword")
 
     if (!patientEmail) {
       alert('Patient has no email')
@@ -1722,9 +1863,14 @@ async function init_recall_button() {
 
     var apptSchedule =  apptDate + "T" + apptTime
     var cleanedSchedule = dayjs(apptSchedule).format("h:mmA on MMMM D");
+    var cleanedPatient = apptPatient ? apptPatient : 'Patient'
+    var clinicName = localStorage["clinicname"]
 
-    window.open(`mailto:${patientEmail}?subject=Your doctor has sent a recall email&body=Your doctor needs to follow up documents/results.%0d%0a` +
-                `We have tentatively booked you an appointment at ${cleanedSchedule}.%0d%0a%0d%0aPlease [confirm] or [reschedule].`)
+    window.open(`mailto:${patientEmail}?subject=Your doctor wants to speak with you&` +
+    `body=Dear ${cleanedPatient},%0d%0aYour doctor needs to follow up with you regarding some documents or results.%0d%0a` +
+    `We have tentatively booked you an appointment at ${cleanedSchedule}.%0d%0a%0d%0aPlease confirm with the following link:` +
+    `https://${ clinicName }.cortico.ca/get-patient-appointment-lookup-url/%0d%0a%0d%0a` +
+    `Sincerely,%0d%0a${clinicName.toUpperCase()} STAFF`)
   }
 
   update_recall_button_visibility();
