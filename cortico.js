@@ -2,9 +2,6 @@
 // @name     Cortico2
 // @version  2.1
 // @grant    none
-// @author       You
-// @match        https://demo3.junoemr.com/kensington/*
-// @icon         https://www.google.com/s2/favicons?domain=junoemr.com
 // ==/UserScript==
 
 
@@ -127,10 +124,18 @@ const init_cortico = function() {
     }
 
     setupPrescriptionButtons();
+  } else if (route.indexOf("/oscarRx/choosePatient.do?") > -1) {
+      var currentPharmacyCode = localStorage.getItem('currentPharmacyCode')
+      var demographicNo = getDemographicNo(window.location.search)
+
+      // setting demographic no to cache here to use them in urls where demographic can't
+      // be found using the url params
+      localStorage.setItem('currentDemographicNo', demographicNo)
+      setupPreferredPharmacy(currentPharmacyCode, demographicNo)
   } else if (route.indexOf("/oscarRx/ViewScript2.jsp") > -1) {
       // We need to determine first if the prescription is "delivery"
       const currentPharmacyCode = localStorage.getItem('currentPharmacyCode')
-
+      console.log('currentPharmacyCode', currentPharmacyCode)
       if (currentPharmacyCode.toLowerCase().indexOf("dlvr") > -1) {
           const additionalNotes = document.getElementById('additionalNotes')
           additionalNotes.value = "FOR DELIVERY"
@@ -425,7 +430,7 @@ function addCorticoLogo() {
   var menu = document.querySelector("#firstMenu #navList");
   var listitem = document.createElement("li");
   listitem.innerHTML =
-    '<a href="http://cortico.ca"><img src="https://cortico.ca/images/favicon/32x32.png" height="15" style="vertical-align: middle;" /></a>';
+    '<a href="http://cortico.ca"><img src="http://bool.countable.ca/32x32.png" height="15" style="vertical-align: middle;" /></a>';
   menu.appendChild(listitem);
 }
 
@@ -1182,7 +1187,9 @@ function getAppointmentLink(apptTdElement) {
 
 function getDemographicNo(apptUrl) {
   var searchParams = new URLSearchParams(apptUrl);
-  return searchParams.get("demographic_no");
+  var demographic_no = searchParams.get("demographic_no") || searchParams.get("demographicNo");
+
+  return demographic_no;
 }
 
 function getAppointmentInfo(apptNodes) {
@@ -1366,20 +1373,47 @@ function plusSignFromCache() {
 }
 
 
-function getPharmacyCodeFromReason(textContent) {
+function stringArrayToObj(stringArray) {
+    var obj = {};
+    for (var i = 0; i < stringArray.length; i++) {
+        var split = stringArray[i].split(':');
+
+        if (!split[0] || !split[1]) {
+            continue;
+        }
+        obj[split[0].trim()] = split[1].trim();
+    }
+
+    return obj
+}
+
+
+function getPharmacyCodeFromReasonOrNotes(textContent) {
     var titleContents = textContent.split("\n")
+    var apptFields = stringArrayToObj(titleContents)
 
-    var reason = titleContents[3]
-    var reasonValue = reason.split(":")[1].trim()
-    var reasonValuesList = reasonValue.match(/\[(.*?)\]/g)
+    // assuming that the notes is always the last field in the textContent
+    var textContentList = textContent.split("notes: ")
+    var notesValue = textContentList[textContentList.length - 1]
 
-    // we are assuming here that the pharmacy code is the 2nd
-    var pharmacyCode = reasonValuesList ? reasonValuesList[1] : null;
+    var notesValuesList = notesValue.match(/\[(.*?)\]/g)
+    var pharmacyCode = notesValuesList && notesValuesList.length > 0 ? notesValuesList[0] : null;
+    console.log('notes pharmacy code', pharmacyCode)
+    // Check RFV field if not existing in notes
+    if (!pharmacyCode) {
+      var reason = apptFields["reason"]
+      var reasonValuesList = reason.match(/\[(.*?)\]/g)
+
+      // we are assuming here that the pharmacy code is the 2nd
+      pharmacyCode = reasonValuesList && reasonValuesList.length > 0 ? reasonValuesList[1] : null;
+      console.log('rfv pharmacy code', pharmacyCode)
+    }
 
     if (pharmacyCode) {
       pharmacyCode = pharmacyCode.replace(/[\[\]']+/g, '')
     }
 
+    console.log('final pharmacy code', pharmacyCode)
     return pharmacyCode;
 }
 
@@ -1394,8 +1428,8 @@ function setupPrescriptionButtons() {
       }
 
       var apptTitle = element.attributes.title.textContent
-      var pharmacyCode = getPharmacyCodeFromReason(apptTitle)
-
+      var pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle)
+      console.log('pharmacyCode', pharmacyCode)
       localStorage.setItem('currentPharmacyCode', pharmacyCode)
     }
   }, false)
@@ -1404,22 +1438,20 @@ function setupPrescriptionButtons() {
 
 function sendPatientPrescriptionNotification() {
   const clinicName = localStorage['clinicname']
-  const url = `https://${clinicName}.cortico.ca/notify-prescription`
+  var pharmacy = JSON.parse(localStorage.getItem('preferredPharmacy'))
+  var demographic_no = localStorage.getItem('currentDemographicNo')
 
-  var formData = new FormData();
-  formData.append("demographic_no", getDemographicFomLocation())
-  formData.append("pharmacy", localStorage.getItem('preferredPharmacy'))
-
-  const data = new URLSearchParams(formData)
+  const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(pharmacy.name)}`
 
   return fetch(url, {
-    method: "POST",
-    body: data,
+    method: "GET",
     headers: {
         Accept:
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Content-Type": "application/x-www-form-urlencoded",
     },
+  }).catch(error => {
+    console.log('Error: ', error)
   })
 }
 
@@ -1428,8 +1460,16 @@ function setupFaxButton() {
   const prescriptionFrame = document.getElementById("AutoNumber1")
   prescriptionFrame.addEventListener("click", async function(e) {
     if (e.target.matches("#faxBUtton, #faxAndPasteButton")) {
-      const result = await sendPatientPrescriptionNotification()
-      const text = await result.text()
+      const res = await sendPatientPrescriptionNotification()
+
+      console.log(await res.text())
+      console.log(await res.ok)
+      if (!isOk) {
+        alert(`Please login at https://${ localStorage['clinicname'] }.cortico.ca/sign_in`)
+        return
+      }
+
+      const text = await res.text()
       const json = JSON.parse(text)
     }
   }, false)
@@ -1437,7 +1477,7 @@ function setupFaxButton() {
 
 
 function getPharmacyDetails(pharmacyCode){
-  const clinicName = localStorage["clinicname"]
+  const clinicName = localStorage['clinicname']
   const url = `https://${clinicName}.cortico.ca/api/pharmacies/?code=${pharmacyCode}`
 
   return fetch(url, {
@@ -1458,24 +1498,33 @@ async function setupPreferredPharmacy(code, demographic_no) {
   console.log(pharmacyCode)
   const corticoPharmacy = await getPharmacyDetails(pharmacyCode)
   const corticoPharmacyText = JSON.parse(await corticoPharmacy.text());
-  const searchTerm = corticoPharmacyText[0]['name'] || null
+  var faxNumber = corticoPharmacyText[0]['fax_number'] || null
+  var searchTerm = corticoPharmacyText[0]['name'] || null
+
+  // only use the first word on the pharmacy name to search for list
+  searchTerm = searchTerm ? searchTerm.split(" ")[0] : null
+  // cleanup fax number
+  if (faxNumber) faxNumber = `1${faxNumber.match(/\d+/g).join('')}`
 
   var demographicNo = demographic_no
   if (!demographic_no) {
-    demographicNo = getDemographicFomLocation()
+    demographicNo = getDemographicFromLocation()
   }
 
   const currPharmacyResults = await getCurrentPharmacy(demographicNo)
   const currPharmacyText = JSON.parse(await currPharmacyResults.text());
   var preferredPharmacy;
-
+  console.log('currpharmacy', currPharmacyText)
   if (currPharmacyText) {
     preferredPharmacy = currPharmacyText[0]
-    localStorage.setItem('preferredPharmacy', preferredPharmacy)
+    localStorage.setItem('preferredPharmacy', JSON.stringify(preferredPharmacy))
   }
 
   const currentlyUsingPharmacy = (
-    preferredPharmacy && preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1)
+    preferredPharmacy &&
+    preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) > -1 &&
+    preferredPharmacy.fax === faxNumber
+  )
   console.log(`currently using pharmacy ${searchTerm.toLowerCase()}, ${currentlyUsingPharmacy}`)
 
   storePharmaciesCache(demographicNo)
@@ -1483,7 +1532,6 @@ async function setupPreferredPharmacy(code, demographic_no) {
   if (searchTerm && !currentlyUsingPharmacy) {
       const results = await getPharmacyResults(searchTerm)
       const text = await results.text()
-      console.log("text", text)
       const json = JSON.parse(text)
       const pharmacyUpdated = json.length > 0
 
@@ -1491,7 +1539,9 @@ async function setupPreferredPharmacy(code, demographic_no) {
 
       if (pharmacyUpdated)
       {
-          const pharmacy =(json.find((item) => {return item.name === searchTerm}))
+          const pharmacy =(json.find((item) => {
+            return item.name.includes(searchTerm) && item.fax === faxNumber;
+          }))
           if (pharmacy){
             const setPharmacyResults = await setPreferredPharmacy(pharmacy, demographicNo);
             const setPharmacyText = await setPharmacyResults.text()
@@ -1529,7 +1579,7 @@ function storePharmaciesCache(demographicNo) {
   // make sure demographics is array before pushing
   if (Array.isArray(demographics)) {
     demographics.push(demographicNo)
-  } 
+  }
 
   cache = {
     date: date,
@@ -1567,7 +1617,7 @@ function storePharmaciesFailureCache(demographicNo, message) {
 }
 
 
-function getDemographicFomLocation() {
+function getDemographicFromLocation() {
   const routeParams = new URLSearchParams(window.location.search)
 
   return routeParams.get('demographicNo')
@@ -1603,8 +1653,8 @@ async function setupPreferredPharmacies() {
       }
 
       const apptTitle = element.attributes.title.textContent
-      const pharmacyCode = getPharmacyCodeFromReason(apptTitle)
-
+      const pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle)
+      
       if (!pharmacyCode) {
         continue;
       }
