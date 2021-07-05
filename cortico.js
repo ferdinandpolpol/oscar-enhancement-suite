@@ -961,104 +961,8 @@ async function checkAllEligibility() {
 }
 
 
-function getPharmacyResults(searchTerm) {
-  const uriSafeSearch = searchTerm.toLowerCase().replace(' ', '+')
-  const newLocal = "oscarRx/managePharmacy.do?method=search&search&term=" + uriSafeSearch;
-  var url =
-    getOrigin() +
-    "/" +
-    getProvider() +
-    "/" +
-    newLocal
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "Content-Type": "application/json",
-    },
-  })
-}
-
-function getCurrentPharmacy(demographicNo) {
-  const newLocal = "oscarRx/managePharmacy.do?method=getPharmacyFromDemographic&demographicNo=" + demographicNo;
-  var url =
-    getOrigin() +
-    "/" +
-    getProvider() +
-    "/" +
-    newLocal
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "Content-Type": "application/json",
-    },
-  })
-}
-
 function setPreferredPharmacy(pharmacyObj, demographicNo) {
 
-    const url =
-          getOrigin() +
-          "/" +
-          getProvider() +
-          "/" +
-          "oscarRx/managePharmacy.do?method=setPreferred"
-
-    pharmacyObj.name = pharmacyObj.name.replace(' ', '+')
-
-    var formData = new FormData();
-    formData.append("pharmacyId", pharmacyObj.id)
-    formData.append("demographicNo", demographicNo)
-    formData.append("pharmacyName", pharmacyObj.name)
-    formData.append("pharmacyAddress", pharmacyObj.address)
-    formData.append("pharmacyCity", pharmacyObj.city)
-    formData.append("pharmacyProvince", pharmacyObj.province)
-    formData.append("pharmacyPostalCode", pharmacyObj.postalCode)
-    formData.append("pharmacyPhone1", pharmacyObj.phone1)
-    formData.append("pharmacyPhone2", pharmacyObj.phone2)
-    formData.append("pharmacyFax", pharmacyObj.fax)
-    formData.append("pharmacyEmail", pharmacyObj.email)
-    formData.append("pharmacyServiceLocationId", pharmacyObj.serviceLocationIdentifier)
-    formData.append("pharmacyNotes", pharmacyObj.notes)
-    formData.append("preferredOrder", "1")
-
-    const data = new URLSearchParams(formData)
-
-    return fetch(url, {
-        method: "POST",
-        body: data,
-        headers: {
-            Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    })
-
-}
-
-function checkEligiblity(demographicNo, origin, provider) {
-  var url =
-    origin +
-    "/" +
-    provider +
-    "/" +
-    "billing/CA/BC/ManageTeleplan.do?demographic=" +
-    demographicNo +
-    "&method=checkElig";
-
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    },
-  });
-}
 
 function getAppointmentLink(apptTdElement) {
   var apptLink = apptTdElement.querySelector("a.apptLink");
@@ -1121,10 +1025,6 @@ function extractApptUrl(s) {
   return s.match(/'([^']+)'/)[1].substring(2);
 }
 
-function appointmentEditRequest(origin, provider, apptUrl) {
-  return fetch(origin + "/" + provider + apptUrl);
-}
-
 function handleAddData(data) {
   if (!oscar.isJuno()) {
     return data;
@@ -1154,21 +1054,6 @@ function updateAppointment(origin, provider, data) {
   data.set("displaymode", "Update Appt");
   const _data = new URLSearchParams(data);
   return appointmentRequest(origin, provider, _data);
-}
-
-function appointmentRequest(origin, provider, data) {
-  return fetch(
-    origin + "/" + provider + "/appointment/appointmentcontrol.jsp",
-    {
-      method: "POST",
-      body: data,
-      headers: {
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    }
-  );
 }
 
 // This TD Element needs to be an appointment or empty slot.
@@ -1320,24 +1205,6 @@ function setupPrescriptionButtons() {
 }
 
 
-function sendPatientPrescriptionNotification() {
-  const clinicName = localStorage['clinicname']
-
-  const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(pharmacy.name)}`
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-        Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Content-Type": "application/x-www-form-urlencoded",
-    },
-  }).catch(error => {
-    console.log('Error: ', error)
-  })
-}
-
-
 function setupFaxButton() {
   const prescriptionFrame = document.getElementById("AutoNumber1")
   prescriptionFrame.addEventListener("click", async function(e) {
@@ -1355,19 +1222,6 @@ function setupFaxButton() {
       const json = JSON.parse(text)
     }
   }, false)
-}
-
-
-function getPharmacyDetails(pharmacyCode){
-  const clinicName = localStorage['clinicname']
-  const url = `https://${clinicName}.cortico.ca/api/pharmacies/?code=${pharmacyCode}`
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-        "Content-Type": "application/json",
-    },
-  })
 }
 
 
@@ -1498,19 +1352,6 @@ function storePharmaciesFailureCache(demographicNo, message) {
     failures: failures
   }
   localStorage.setItem('pharmaciesCacheFailure', JSON.stringify(cache))
-}
-
-
-async function getDiagnosticFromCortico(appt_no, notes) {
-  const clinicName = localStorage['clinicname']
-  const url = `https://${clinicName}.cortico.ca/api/encrypted/diagnostic-results/?appointment_id=${appt_no}&notes=${notes}`
-
-  return fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
 }
 
 
@@ -1674,6 +1515,26 @@ async function init_recall_button() {
 
 }
 
+// API calls to oscar
+function appointmentEditRequest(origin, provider, apptUrl) {
+  return fetch(origin + "/" + provider + apptUrl);
+}
+
+function appointmentRequest(origin, provider, data) {
+  return fetch(
+    origin + "/" + provider + "/appointment/appointmentcontrol.jsp",
+    {
+      method: "POST",
+      body: data,
+      headers: {
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
+}
+
 async function getPatientEmail() {
   const result = await getDemographicPageResponse()
   const text = await result.text()
@@ -1688,6 +1549,104 @@ async function getPatientEmail() {
   return emails[0]
 }
 
+    const url =
+          getOrigin() +
+          "/" +
+          getProvider() +
+          "/" +
+          "oscarRx/managePharmacy.do?method=setPreferred"
+
+    pharmacyObj.name = pharmacyObj.name.replace(' ', '+')
+
+    var formData = new FormData();
+    formData.append("pharmacyId", pharmacyObj.id)
+    formData.append("demographicNo", demographicNo)
+    formData.append("pharmacyName", pharmacyObj.name)
+    formData.append("pharmacyAddress", pharmacyObj.address)
+    formData.append("pharmacyCity", pharmacyObj.city)
+    formData.append("pharmacyProvince", pharmacyObj.province)
+    formData.append("pharmacyPostalCode", pharmacyObj.postalCode)
+    formData.append("pharmacyPhone1", pharmacyObj.phone1)
+    formData.append("pharmacyPhone2", pharmacyObj.phone2)
+    formData.append("pharmacyFax", pharmacyObj.fax)
+    formData.append("pharmacyEmail", pharmacyObj.email)
+    formData.append("pharmacyServiceLocationId", pharmacyObj.serviceLocationIdentifier)
+    formData.append("pharmacyNotes", pharmacyObj.notes)
+    formData.append("preferredOrder", "1")
+
+    const data = new URLSearchParams(formData)
+
+    return fetch(url, {
+        method: "POST",
+        body: data,
+        headers: {
+            Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    })
+
+}
+
+function checkEligiblity(demographicNo, origin, provider) {
+  var url =
+    origin +
+    "/" +
+    provider +
+    "/" +
+    "billing/CA/BC/ManageTeleplan.do?demographic=" +
+    demographicNo +
+    "&method=checkElig";
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    },
+  });
+}
+
+function getPharmacyResults(searchTerm) {
+  const uriSafeSearch = searchTerm.toLowerCase().replace(' ', '+')
+  const newLocal = "oscarRx/managePharmacy.do?method=search&search&term=" + uriSafeSearch;
+  var url =
+    getOrigin() +
+    "/" +
+    getProvider() +
+    "/" +
+    newLocal
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "Content-Type": "application/json",
+    },
+  })
+}
+
+function getCurrentPharmacy(demographicNo) {
+  const newLocal = "oscarRx/managePharmacy.do?method=getPharmacyFromDemographic&demographicNo=" + demographicNo;
+  var url =
+    getOrigin() +
+    "/" +
+    getProvider() +
+    "/" +
+    newLocal
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "text/javascript, text/html, application/xml, text/xml, */*",
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "Content-Type": "application/json",
+    },
+  })
+}
+
+
 function getDemographicPageResponse() {
   const origin = getOrigin();
   const provider = getProvider();
@@ -1695,4 +1654,47 @@ function getDemographicPageResponse() {
   const url = `${origin}/${provider}/demographic/demographiccontrol.jsp?demographic_no=${demographicNo}&displaymode=edit&dboperation=search_detail`
 
   return fetch(url)
+}
+
+
+// API calls to Cortico API
+function sendPatientPrescriptionNotification() {
+  const clinicName = localStorage['clinicname']
+
+  const url = `https://${clinicName}.cortico.ca/api/notify-prescription/?demographic_no=${demographic_no}&pharmacy=${encodeURIComponent(pharmacy.name)}`
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+        Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Content-Type": "application/x-www-form-urlencoded",
+    },
+  }).catch(error => {
+    console.log('Error: ', error)
+  })
+}
+
+function getPharmacyDetails(pharmacyCode){
+  const clinicName = localStorage['clinicname']
+  const url = `https://${clinicName}.cortico.ca/api/pharmacies/?code=${pharmacyCode}`
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+        "Content-Type": "application/json",
+    },
+  })
+}
+
+async function getDiagnosticFromCortico(appt_no, notes) {
+  const clinicName = localStorage['clinicname']
+  const url = `https://${clinicName}.cortico.ca/api/encrypted/diagnostic-results/?appointment_id=${appt_no}&notes=${notes}`
+
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
 }
