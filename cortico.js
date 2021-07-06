@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name     Cortico2
+// @name     Cortico
 // @version  2.1
 // @grant    none
 // ==/UserScript==
@@ -62,8 +62,27 @@ const init_cortico = function () {
     if (isMarkham) {
       plusSignFromCache();
     }
-  }
 
+    setupPrescriptionButtons();
+  } else if (route.indexOf("/oscarRx/ViewScript2.jsp") > -1) {
+    // We need to determine first if the prescription is "delivery"
+    const currentPharmacyCode = localStorage.getItem("currentPharmacyCode");
+
+    if (currentPharmacyCode.toLowerCase().indexOf("dlvr") > -1) {
+      const additionalNotes = document.getElementById("additionalNotes");
+      additionalNotes.value = "FOR DELIVERY";
+
+      // make sure the preview frame is loaded before adding the notes
+      const previewFrame = document.getElementById("preview");
+
+      previewFrame.addEventListener("load", function () {
+        // addNotes is a function in oscar
+        addNotes();
+      });
+
+      // setupFaxButton();
+    }
+  }
   init_styles();
 };
 
@@ -1164,7 +1183,6 @@ function getPharmacyCodeFromReasonOrNotes(textContent) {
   var notesValuesList = notesValue.match(/\[(.*?)\]/g);
   var pharmacyCode =
     notesValuesList && notesValuesList.length > 0 ? notesValuesList[0] : null;
-  console.log("notes pharmacy code", pharmacyCode);
   // Check RFV field if not existing in notes
   if (!pharmacyCode) {
     var reason = apptFields["reason"];
@@ -1175,14 +1193,12 @@ function getPharmacyCodeFromReasonOrNotes(textContent) {
       reasonValuesList && reasonValuesList.length > 0
         ? reasonValuesList[1]
         : null;
-    console.log("rfv pharmacy code", pharmacyCode);
   }
 
   if (pharmacyCode) {
     pharmacyCode = pharmacyCode.replace(/[\[\]']+/g, "");
   }
 
-  console.log("final pharmacy code", pharmacyCode);
   return pharmacyCode;
 }
 
@@ -1405,7 +1421,6 @@ async function setupPreferredPharmacies() {
 
       const apptTitle = element.attributes.title.textContent;
       const pharmacyCode = getPharmacyCodeFromReasonOrNotes(apptTitle);
-
       if (!pharmacyCode) {
         continue;
       }
