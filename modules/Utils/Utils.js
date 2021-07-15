@@ -33,3 +33,11 @@ export function waitForElm(selector) {
     });
   });
 }
+
+export function getOrigin() {
+  return window.location.origin;
+}
+
+export function getProvider() {
+  return window.location.pathname.split("/")[1];
+}

@@ -10,6 +10,7 @@ import { getAppointments } from "./modules/Appointments/Appointments";
 import { addAppointmentMenu } from "./modules/Appointments/AppointmentMenu";
 import { Oscar } from "./modules/Oscar/Oscar";
 import "element-closest-polyfill";
+import { getOrigin, getProvider } from "./modules/Utils/Utils";
 
 // manually update this variable with the version in manifest.json
 const version = 2.0;
@@ -47,14 +48,22 @@ const init_cortico = function () {
   ) {
     init_appointment_page();
     init_recall_button();
-    init_diagnostic_viewer_button();
+
+    // Temporary fix, adding event listener does not work inside init_appointment_page
+    // Note: event listeners inside init_recall_button seems to be working fine
+    var resources_field = document.querySelector('[name="resources"]');
+    var cortico_button = document.getElementById("cortico-video-appt-btn");
+    // open a windows to the cortico video page for this appointment.
+    cortico_button.addEventListener("click", open_video_appointment_page);
+    resources_field.addEventListener("change", update_video_button_visibility);
+    // init_diagnostic_viewer_button();
   } else if (route.indexOf("/provider/providercontrol.jsp") > -1) {
     init_schedule();
     dragAndDrop();
     addCorticoLogo();
     addMenu();
-    addAppointmentMenu();
-    if (!oscar.isJuno()) {
+    //addAppointmentMenu();
+    if (!oscar.isJuno() && !oscar.containsKaiBar()) {
       plusSignFromCache();
     }
 
@@ -129,19 +138,56 @@ const init_schedule = function () {
   }, 1000);
 };
 
-const init_appointment_page = function () {
+function update_video_button_visibility() {
+  var cortico_button = document.getElementById("cortico-video-appt-btn");
+  var resources_field = document.querySelector('[name="resources"]');
+  cortico_button.style.visibility =
+    resources_field.value === "virtual" ? "visible" : "hidden";
+}
+
+function open_video_appointment_page(e) {
+  e.preventDefault(); // don't submit the form.
+
+  if (!localStorage["clinicname"]) {
+    var clinicname = prompt("what is your Cortico website URL?");
+    if (clinicname.indexOf(".cortico.ca") > -1) {
+      clinicname = clinicname.substr(0, clinicname.indexOf(".cortico.ca"));
+      clinicname = clinicname.replace(/https?:\/\//, "");
+    }
+    localStorage["clinicname"] = clinicname;
+  }
+  var appt_no = getQueryStringValue("appointment_no");
+  if (!appt_no) {
+    return alert(
+      "Please save your appointment first, before starting a video call."
+    );
+  }
+  window.open(
+    "https://" +
+      localStorage["clinicname"] +
+      ".cortico.ca/appointment/" +
+      appt_no
+  );
+}
+
+function init_appointment_page() {
   // resources dropdown
   var resources_field = document.querySelector(
     'input[type="text"][name="resources"]'
   );
   const cortico_media = ["phone", "clinic", "virtual", "", "quiet"];
 
-  if (cortico_media.indexOf(resources_field.value) > -1) {
-    const parent = resources_field.parentNode;
+  const parent = resources_field.parentNode;
 
-    let html = '<select name="resources">';
+  console.log(
+    "If test",
+    cortico_media.indexOf(resources_field.value),
+    resources_field.value
+  );
+  if (cortico_media.indexOf(resources_field.value) > -1) {
+    let selectHtml = '<select name="resources">';
     cortico_media.forEach(function (value) {
-      html +=
+      selectHtml +=
         "<option " +
         (value == resources_field.value ? "selected " : "") +
         'value="' +
@@ -150,56 +196,51 @@ const init_appointment_page = function () {
         (value || "n/a") +
         "</option>";
     });
-    html += "</select>";
+    selectHtml += "</select>";
 
-    parent.innerHTML = html;
+    parent.innerHTML = selectHtml;
+
+    const resourceCheckbox = document.createElement("input");
+    resourceCheckbox.setAttribute("type", "checkbox");
+    resourceCheckbox.setAttribute("id", "resourceCheck");
+
+    const resourceLabel = document.createElement("label");
+    resourceLabel.setAttribute("for", "resourceCheck");
+    resourceLabel.textContent = "Text field";
+    parent.appendChild(resourceCheckbox);
+    parent.appendChild(resourceLabel);
+
+    const resourceTextInput = document.createElement("input");
+    resourceTextInput.setAttribute("type", "TEXT");
+    resourceTextInput.setAttribute("name", "resources");
+    resourceTextInput.setAttribute("tabindex", "5");
+    resourceTextInput.setAttribute("width", "25");
+
+    resourceCheckbox.addEventListener("input", (e) => {
+      parent.innerHTML = "";
+      if (e.target.checked === true) {
+        parent.appendChild(resourceTextInput);
+      } else {
+        parent.innerHTML = selectHtml;
+      }
+
+      parent.appendChild(resourceCheckbox);
+      parent.appendChild(resourceLabel);
+    });
+
     resources_field = document.querySelector('[name="resources"]');
   }
 
   // telehealth button
   var last_button = document.querySelector("#printReceiptButton").parentNode;
   last_button.parentNode.innerHTML +=
-    "<button class='cortico-btn' id='cortico' style='color:white; background-color:blue'>Cortico Video Call &phone;</button>";
+    "<button class='cortico-btn' type='button' id='cortico-video-appt-btn' style='color:white; background-color:blue'>Cortico Video Call &phone;</button>";
 
-  var cortico_button = document.getElementById("cortico");
-  // open a windows to the cortico video page for this appointment.
-  cortico_button.addEventListener("click", function (e) {
-    e.preventDefault(); // don't submit the form.
-
-    if (!localStorage["clinicname"]) {
-      var clinicname = prompt("what is your Cortico website URL?");
-      if (clinicname.indexOf(".cortico.ca") > -1) {
-        clinicname = clinicname.substr(0, clinicname.indexOf(".cortico.ca"));
-        clinicname = clinicname.replace(/https?:\/\//, "");
-      }
-      localStorage["clinicname"] = clinicname;
-    }
-    appt_no = getQueryStringValue("appointment_no");
-    if (!appt_no) {
-      return alert(
-        "Please save your appointment first, before starting a video call."
-      );
-    }
-    window.open(
-      "https://" +
-        localStorage["clinicname"] +
-        ".cortico.ca/appointment/" +
-        appt_no
-    );
-    return false;
-  });
-
-  function update_video_button_visibility() {
-    cortico_button.style.visibility =
-      resources_field.value === "virtual" ? "visible" : "hidden";
-  }
   update_video_button_visibility();
-  resources_field.addEventListener("change", update_video_button_visibility);
-};
+}
 
 const init_styles = function () {
-  addGlobalStyle(
-    `.cortico-btn {
+  var style = `.cortico-btn {
   -webkit-appearance:none;
   -moz-appearance:none;
   appearance:none;
@@ -242,14 +283,18 @@ const init_styles = function () {
   color:#fff;
   text-decoration:none
   }
+  `;
+
+  if (!(oscar.isKaiOscarHost() || oscar.containsKaiBar())) {
+    style += `
   .infirmaryView:first-child {
   /*position:fixed;*/
   margin-left: 57px;
   padding: 1px 15px;
   top: 0;
+  }`;
   }
-  `
-  );
+  addGlobalStyle(style);
 };
 
 if (!document.getElementById("cortico_anchor")) {
@@ -287,7 +332,9 @@ function addGlobalStyle(css) {
 }
 
 function addCorticoLogo() {
-  var menu = document.querySelector("#firstMenu #navList");
+  var menu =
+    document.querySelector("#firstMenu #navList") ||
+    document.querySelector("#firstMenu #navlist");
   var listitem = document.createElement("li");
   listitem.innerHTML =
     '<a href="http://cortico.ca"><img src="http://bool.countable.ca/32x32.png" height="15" style="vertical-align: middle;" /></a>';
@@ -388,7 +435,9 @@ function showDiagnosticResults(html_string) {
 }
 
 function addMenu(container) {
-  var navigation = document.querySelector("#firstMenu #navList");
+  var navigation =
+    document.querySelector("#firstMenu #navList") ||
+    document.querySelector("#firstMenu #navlist");
   var menu = document.createElement("li");
   menu.textContent = "Cortico";
   menu.style.color = "rgb(75, 84, 246)";
@@ -505,11 +554,19 @@ function getEligFailed() {
 }
 
 function getFailedList(data) {
-  const failed = JSON.parse(data);
+  let failed = JSON.parse(data);
   let listItems = "";
-  failed.map((f) => {
-    listItems += `<li>Demographic No: ${f.demographic_no}</li>`;
-  });
+
+  // make sure that failed is of type array so map function works
+  if (typeof failed === "string") {
+    failed = JSON.parse(failed);
+  }
+
+  if (failed) {
+    failed.map((f) => {
+      listItems += `<li>Demographic No: ${f.demographic_no}</li>`;
+    });
+  }
   const list = document.createElement("ul");
   list.innerHTML = listItems;
   return list;
@@ -784,7 +841,7 @@ function dragAndDrop() {
     }
 
     const apptDoctor = formData.get("provider_no");
-    const targetDoctor = getProviderNoFromTd(ev.target);
+    const targetDoctor = getCurrentProviderNoFromTd(ev.target);
     const isSameDoctor = apptDoctor === targetDoctor;
     const doctor = targetDoctor;
 
@@ -833,18 +890,12 @@ function dragAndDrop() {
 
 /* Drag and Drop Feature end */
 
-function getOrigin() {
-  return window.location.origin;
-}
-
-function getProvider() {
-  return window.location.pathname.split("/")[1];
-}
-
 function addToFailures(metadata) {
   const _cache = getFailureCache();
   const cache = JSON.parse(_cache) || [];
-  cache.push(metadata);
+  if (cache && cache.push) {
+    cache.push(metadata);
+  }
   localStorage.setItem("failureCache", JSON.stringify(cache));
 }
 
@@ -913,12 +964,14 @@ async function checkAllEligibility() {
   clearFailureCache();
   var nodes = document.querySelectorAll("td.appt");
   var appointmentInfo = getAppointmentInfo(nodes);
+  console.log("Appointment Info", appointmentInfo);
   appointmentInfo = filterAppointments(appointmentInfo);
 
   var length = appointmentInfo.length;
   if (appointmentInfo.length === 0) {
     alert("No Appointments to Check");
   }
+  const providerNo = getProviderNoFromTd(nodes[0]);
   var error = false;
 
   window.checkAllEligibilityRunning = true;
@@ -930,13 +983,28 @@ async function checkAllEligibility() {
       pubsub.publish("check-eligibility", temp);
 
       const demographic_no = appointmentInfo[i].demographic_no;
-      const result = await checkEligiblity(
-        demographic_no,
-        getOrigin(),
-        getProvider()
-      );
-      const text = await result.text();
-      const lowerCaseText = text.toLowerCase();
+      let result = null;
+      try {
+        result = await checkEligiblity(
+          demographic_no,
+          getOrigin(),
+          getProvider(),
+          providerNo
+        );
+      } catch (e) {
+        console.error(e);
+      }
+
+      let text = null;
+      let lowerCaseText = null;
+
+      if (result && result.status === 200) {
+        let text = await result.text();
+        lowerCaseText = text.toLowerCase();
+      } else {
+        text = "Failed to fetch";
+        lowerCaseText = "Failed to fetch";
+      }
 
       if (lowerCaseText.includes("error in teleplan connection")) {
         alert("Automatic Eligiblity Check Aborted. \n" + text);
@@ -968,6 +1036,7 @@ async function checkAllEligibility() {
       });
     }
   } catch (err) {
+    console.log(err);
     alert(err);
   } finally {
     window.checkAllEligibilityRunning = false;
@@ -1074,6 +1143,33 @@ function updateAppointment(origin, provider, data) {
 
 // This TD Element needs to be an appointment or empty slot.
 function getProviderNoFromTd(tdElement) {
+  if (!tdElement) {
+    return null;
+  }
+  const encounterButton = tdElement.querySelector(".encounterBtn");
+
+  if (!encounterButton) {
+    return null;
+  }
+
+  const value = encounterButton.attributes.onclick.textContent;
+  if (!value) {
+    return null;
+  }
+
+  const split = value.split(",");
+  const url = split[2];
+  if (!url) {
+    return null;
+  }
+  const queryString = url.split("?")[1];
+
+  const searchParams = new URLSearchParams(queryString);
+  const providerNo = searchParams.get("providerNo");
+
+  return providerNo;
+}
+function getCurrentProviderNoFromTd(tdElement) {
   //oscar osp
   var dsButton = tdElement
     .closest("table")
@@ -1285,9 +1381,9 @@ async function setupPreferredPharmacy(code, demographic_no) {
 
   const currentlyUsingPharmacy =
     preferredPharmacy &&
-    preferredPharmacy.name.toLowerCase().indexOf(searchTerm.toLowerCase()) >
-      -1 &&
-    preferredPharmacy.fax === faxNumber;
+    preferredPharmacy.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (preferredPharmacy.fax === faxNumber ||
+      faxNumber.includes(preferredPharmacy.fax));
   console.log(
     `currently using pharmacy ${searchTerm.toLowerCase()}, ${currentlyUsingPharmacy}`
   );
@@ -1304,9 +1400,18 @@ async function setupPreferredPharmacy(code, demographic_no) {
       window.location.href.indexOf("oscarRx/choosePatient.do") > -1;
 
     if (pharmacyUpdated) {
-      const pharmacy = json.find((item) => {
-        return item.name.includes(searchTerm) && item.fax === faxNumber;
-      });
+      let pharmacy = json.length === 1 ? json[0] : null;
+      if (json.length > 1) {
+        pharmacy = json.find((item) => {
+          return (
+            item.name.includes(searchTerm) &&
+            // either if the fax is the same or the formatted fax has the values
+            (item.fax === faxNumber || faxNumber.includes(item.fax))
+          );
+        });
+      }
+
+      console.log("Pharmacy", pharmacy);
       if (pharmacy) {
         const setPharmacyResults = await setPreferredPharmacy(
           pharmacy,
@@ -1413,9 +1518,18 @@ async function setupPreferredPharmacies() {
       var demographics = new Array();
 
       if (pharmaciesCache && pharmaciesCache["demographics"]) {
-        demographics = pharmaciesCache["demographics"];
+        let cachedDemographics = pharmaciesCache["demographics"];
+
+        demographics = Array.isArray(cachedDemographics)
+          ? cachedDemographics
+          : JSON.parse(cachedDemographics);
       }
-      if (demographics && demographics.includes(demographicNo)) {
+
+      if (
+        demographics &&
+        Array.isArray(demographics) &&
+        demographics.includes(demographicNo)
+      ) {
         continue;
       }
 
@@ -1455,7 +1569,9 @@ async function init_diagnostic_viewer_button() {
   var notesValue = notesField.textContent;
   console.log("echo", notesValue);
 
-  var last_button = document.querySelector("#cortico").parentNode;
+  var last_button = document.querySelector(
+    "#cortico-video-appt-btn"
+  ).parentNode;
   last_button.parentNode.innerHTML +=
     "<button class='cortico-btn' id='diagnostic-viewer-btn' style='color:white; background-color:blue'>Diagnostic Viewer</button>";
 
@@ -1495,9 +1611,11 @@ async function init_recall_button() {
   var statusValue = statusOption.options[statusOption.selectedIndex].text;
   console.log("echo", statusValue);
 
-  var last_button = document.querySelector("#cortico").parentNode;
+  var last_button = document.querySelector(
+    "#cortico-video-appt-btn"
+  ).parentNode;
   last_button.parentNode.innerHTML +=
-    "<button class='cortico-btn' id='recall-btn' style='color:white; background-color:blue'>Recall email</button>";
+    "<button class='cortico-btn' type='button' id='recall-btn' style='color:white; background-color:blue'>Recall email</button>";
 
   const corticoRecallButton = document.getElementById("recall-btn");
 
