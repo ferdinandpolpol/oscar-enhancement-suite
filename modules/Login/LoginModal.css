@@ -1,0 +1,33 @@
+.cortico-login-container {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  width: auto;
+  height: auto;
+  padding: 20px;
+  z-index: 100;
+
+  display: none;
+  justify-content: center;
+  align-items: left;
+  flex-direction: column;
+  background-color: white;
+  opacity: 0;
+  transform: translate(-50%, 0);
+
+  border: 1px solid;
+}
+
+.cortico-login-container > label,
+input {
+  margin: 3px 0;
+}
+
+.cortico-login-container.show {
+  display: flex;
+  opacity: 1;
+}
+
+.cortico-color {
+  color: rgb(75, 84, 246);
+}
