@@ -1156,14 +1156,15 @@ function dragAndDrop() {
         { start_time: newStartTime, provider_no: targetDoctor }
       );
     } else {
-      result = await cutAppointment(origin, namespace, formData);
-      formData.set("provider_no", targetDoctor);
+      alert("Unable to switch appointment between providers.")
+      // result = await cutAppointment(origin, namespace, formData);
+      // formData.set("provider_no", targetDoctor);
 
-      handleAddData(formData);
-      const data = new URLSearchParams(formData);
-      result = await addAppointment(origin, namespace, data);
+      // handleAddData(formData);
+      // const data = new URLSearchParams(formData);
+      // result = await addAppointment(origin, namespace, data);
 
-      window.location.reload();
+      // window.location.reload();
     }
   }
 
