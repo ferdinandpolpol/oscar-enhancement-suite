@@ -304,7 +304,7 @@ function init_appointment_page() {
 }
 
 async function demoFromHTML() {
-
+  6
   var pdf = new jsPDF('p', 'pt', 'letter');
   // source can be HTML-formatted string, or a reference
   // to an actual DOM element from which the text will be scraped.
@@ -358,21 +358,42 @@ async function setupPatientEmailButton() {
   }
 
   const patient_info = await getPatientInfo();
-  let mailto_str
-  if (is_eform_page) {
-    mailto_str = `mailto:${patient_info.email}?subject=Your+Document&body=Hi+${patient_info["First Name"]}%0A%0APlease find the attached document from your doctor at ${clinicName}.`
-  } else {
-    mailto_str = `mailto:${patient_info.email}`
-  }
 
-  const email_btn = htmlToElement(`
+  const email_btn = create(`
   <p style='margin-bottom:2em'>
     <a id='cortico-email-patient' class='cortico-btn'>Email Patient</a>
   </p>
   `);
+  email_btn.addEventListener("click", async (e) => {
+    if (!checkCorticoUrl(e)) return;
 
-  delegate(email_btn, 'click', 'a', async function (e) {
-    await demoFromHTML()
+    await loadExtensionStorageValue("jwt_access_token").then(async function (access_token) {
+      // copy document and remove unnecessary stuff
+      let html = document.cloneNode(true);
+      let doNotPrintList = html.querySelectorAll(".DoNotPrint")
+
+      html.head.remove();
+      html.querySelector("[name='LabQuickSelect']").remove();
+
+      html.querySelectorAll("input[type='text']").forEach((input) => {
+        let parent = input.parentNode;
+        let value = input.value;
+        let style = input.style
+        input.remove()
+
+        let node = create(`<p>${value}</p>`)
+        node.style = style
+        parent.appendChild(node)
+      })
+
+      doNotPrintList.forEach(e => e.remove());
+
+      let patientFormResponse = await emailPatientEForm(
+        patient_info,
+        html.documentElement.outerHTML,
+        access_token
+      );
+    })
   })
 
   email_parent.appendChild(email_btn);
@@ -2123,8 +2144,6 @@ async function init_diagnostic_viewer_button() {
   async function open_diagnostic_viewer(e) {
     if (!checkCorticoUrl(e.originalEvent)) return;
 
-    e.preventDefault();
-
     const appt_no = getQueryStringValue("appointment_no");
 
     await loadExtensionStorageValue("jwt_access_token").then(async function (access_token) {
@@ -2262,4 +2281,50 @@ function getDemographicPageResponse(demographic) {
   const url = `${origin}/${namespace}/demographic/demographiccontrol.jsp?demographic_no=${demographicNo}&displaymode=edit&dboperation=search_detail`;
 
   return fetch(url);
+}
+
+
+async function emailPatientEForm(patientInfo, html, token) {
+  let url = "http://localhost/api/plug-in/email-form/"
+  let patientEmail = patientInfo["Email"]
+
+  let data = {
+    "clinic_host": getCorticoUrl().replace('https://', ''),
+    "to": "ferdinand@countable.ca",
+    "pdf_html": html
+  }
+
+  return fetch(url, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-type": "application/json",
+      "Authorization": `Bearer ${token}`
+    }
+    // TODO: handle other cortico api errors the same way
+  }).then(handleErrors)
+    .then((response) => {
+      console.log("Successfully sent email.")
+    })
+    .catch((err) => {
+      console.log("ERR", err)
+      if (err.includes("401")) {
+        alert("Your credentials have expired. Please login again")
+        chrome.storage.local.set({ "jwt_expired": true })
+
+        addLoginForm(chrome)
+        const loginForm = document.querySelector(".login-form")
+        loginForm.classList.add("show")
+      } else {
+        alert("Something went wrong with Cortico.")
+      }
+    });
+}
+
+function handleErrors(response) {
+  if (!response.ok) {
+    throw Error(response.statusText);
+  }
+
+  return response;
 }
